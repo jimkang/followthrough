@@ -11,69 +11,30 @@ Installation
 Usage
 -----
 
-    var followThrough = require('followthrough');
+    var followthrough = require('followthrough');
 
-    followThrough({
+    followthrough({
       start: {
-        worker: loadEntries,
-        params: ['/somewhere/entries', true],
+        work: db.get,
+        params: [
+          {
+            location: '/somewhere/entries',
+            ignoreTemporaryEntries: true
+          }
+        ],
         checkError: checkLoadError,
         next: getStateAfterLoadEntries
       },
       loadImages: {
-        worker: addImagesToEntries,
+        work: addImagesToEntries,
         next: 'renderEntries'
       },
       renderEntries: {
-        worker: callRender
+        work: callRender
       },
-      // Skip here if there is an error and no 'checkError' function.
+      // Jump here if there is an error and no 'checkError' function.
       end: handleError
     });
-
-    function handleError(error) {
-      if (error) {
-        console.log(error, error.stack);
-      }
-    }
-
-    function loadEntries(location, ignoreTemporaryEntries, done) {
-      db.get({location: location, ignoreTemporaryEntries: ignoreTemporaryEntries}, done);
-    }
-
-    function checkLoadError(error) {
-      if (error.type === 'NotFoundError') {
-        // No, we can ignore this.
-        done();
-      }
-      else {
-        // Yes, it's a real error.
-        done(error);
-      }
-    }
-
-    function getStateAfterLoadEntries(error, entries, done) {
-      if (entries.every((entry) => entry.image)) {
-        done(null, 'renderEntries');
-      }
-      else {
-        done(null, 'loadImages');
-      }
-    }
-
-    function addImagesToEntries(entries, done) {
-      var q = queue();
-      ...
-      q.awaitAll(done);
-    }
-
-    function callRender(entries, done) {
-      render({
-        entries: entries,
-        parentElement: document.getElementById('root')
-      });
-      callNextTick(done);
-    }
 
 Why
 ---
@@ -156,11 +117,141 @@ There's a few problems here:
 - The call to `waterfall` implies that the control flow is all right there, but some of it is also out in `branch` and there's a sub-waterfall over in `addImage`.
 - `start` has to do some awkward error-checking. Normally, we let `waterfall` handle the error checking, but we don't want NotFound errors to interrupt the flow. So, task functions handle errors in two different ways.
 
+Waterfall's best for non-branching task sequences.
+
 This is what this program looks like implemented with promises:
 
-The problems there are:
+    var startPromise = new Promise(start);
+    startPromise.catch(handleError);
+    startPromise.then(branch);
 
-- Functions are doing more than one thing – the work, plus deciding control flow.
+    function start(resolve, reject) {
+      var getOpts = {
+        location: location,
+        ignoreTemporaryEntries: ignoreTemporaryEntries
+      };
+      db.get(getOpts, checkEntries);
+
+      function checkEntries(error, entries) {
+        if (error.type === 'NotFoundError') {
+          // We can ignore this.
+          resolve(entries);
+        }
+        else {
+          // Yes, it's a real error.
+          reject(error);
+        }
+      }
+    }
+
+    function branch(entries) {
+      if (entries.every((entry) => entry.image)) {
+        return Promise.resolve(entries)
+          .then(callRender);
+      }
+      else {
+        return Promise.all(entries.map(makeAddImagePromise))
+          .then(callRender);
+      }
+
+      function makeAddImagePromise(entry) {
+        return Promise.resolve(entry)
+          .then(findImageForEntry)
+          .then(addImageToEntry);
+        }
+      }
+    }
+
+    function addImageToEntry({image, entry}) {
+      entry.image = image;
+      return entry;
+    }
+
+    function callRender(entries) {
+      render({
+        entries: entries,
+        parentElement: document.getElementById('root')
+      });
+    }
+
+OK, there's a lot of problems there, too. TODO: Check promises code.
+
+Here's how we can do it with a state machine:
+
+    var followthrough = require('followthrough');
+
+    followthrough({
+      start: {
+        work: db.get,
+        params: [
+          {
+            location: '/somewhere/entries',
+            ignoreTemporaryEntries: true
+          }
+        ],
+        checkError: checkLoadError,
+        next: getStateAfterLoadEntries
+      },
+      loadImages: {
+        work: addImagesToEntries,
+        next: 'renderEntries'
+      },
+      renderEntries: {
+        work: callRender
+      },
+      // Jump here if there is an error and no 'checkError' function.
+      end: handleError
+    });
+
+    function handleError(error) {
+      if (error) {
+        console.log(error, error.stack);
+      }
+    }
+
+    function checkLoadError(error) {
+      if (error.type === 'NotFoundError') {
+        // No, we can ignore this.
+        done();
+      }
+      else {
+        // Yes, it's a real error.
+        done(error);
+      }
+    }
+
+    function getStateAfterLoadEntries(error, entries, done) {
+      if (entries.every((entry) => entry.image)) {
+        done(null, 'renderEntries');
+      }
+      else {
+        done(null, 'loadImages');
+      }
+    }
+
+    function addImagesToEntries(entries, done) {
+      var q = queue();
+      ...
+      q.awaitAll(done);
+    }
+
+    function callRender(entries, done) {
+      render({
+        entries: entries,
+        parentElement: document.getElementById('root')
+      });
+      callNextTick(done);
+    }
+
+That's still a lot of code! But:
+- All of the states are explicitly listed up front.
+- Each function either does "work" or it figures out the next state. None of them do both.
+- There's fewer "prep" functions – functions that do nothing but gather together parameters to pass to another function. `callRender` does that, but at least we are able to set `db.get` up using followthrough instead of having to create a `loadEntries` function that looks like this:
+
+    function loadEntries(location, ignoreTemporaryEntries, done) {
+      db.get({location: location, ignoreTemporaryEntries: ignoreTemporaryEntries}, done);
+    }
+
 
 Tests
 -----
