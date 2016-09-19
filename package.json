@@ -1,0 +1,28 @@
+{
+  "name": "followthrough",
+  "version": "1.0.0",
+  "description": "Control callback flow through a finite state machine with functions that do just one thing each.",
+  "main": "index.js",
+  "scripts": {
+    "test": "make test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:jimkang/followthrough.git"
+  },
+  "keywords": [
+    "callback",
+    "control flow",
+    "state machine"
+  ],
+  "author": "Jim Kang",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jimkang/followthrough/issues"
+  },
+  "homepage": "https://github.com/jimkang/followthrough",
+  "devDependencies": {
+    "tape": "^4.6.0"
+  },
+  "dependencies": {}
+}
