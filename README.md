@@ -78,9 +78,85 @@ Usage
 Why
 ---
 
-You can do something like this in async.waterfall:
+Let's say you have a few async tasks to coordinate:
 
-Or with promises:
+- Load some "entries". Getting them from the db may result in a NotFoundError, but we want to ignore that, while bailing for all other errors.
+- If those entries all have images, then render the entries.
+- If any of the entries are missing images, find images for them and add them to the entries. Then, render the entries.
+
+This is what it'd look like if implemented with [async.waterfall](http://caolan.github.io/async/docs.html#.waterfall):
+
+    async.waterfall(
+      [
+        start,
+        branch,
+        callRender
+      ],
+      handleError
+    );
+
+    function start(done) {
+      var getOpts = {
+        location: location,
+        ignoreTemporaryEntries: ignoreTemporaryEntries
+      };
+      db.get(getOpts, checkEntries);
+
+      function checkEntries(error, entries) {
+        if (error.type === 'NotFoundError') {
+          // We can ignore this.
+          done(null, entries);
+        }
+        else {
+          // Yes, it's a real error.
+          done(error);
+        }
+      }
+    }
+
+    function branch(entries, done) {
+      if (entries.every((entry) => entry.image)) {
+        callNextTick(null, entries);
+      }
+      else {
+        addImages(entries, done);
+      }
+    }
+
+    function callRender(entries, done) {
+      render({
+        entries: entries,
+        parentElement: document.getElementById('root')
+      });
+      callNextTick(done);
+    }
+
+    function addImages(entries, done) {
+      var q = queue(1);
+      entries.forEach((entry) => q.defer(addImage, entry));
+      q.awaitAll(done);
+    }
+
+    function addImage(entry, addDone) {
+      async.waterfall(
+        [
+          findImageForEntry, // Async function defined externally.
+          addImageToEntry
+        ],
+        addDone
+      );
+
+      function addImageToEntry(image, entry, addToEntryDone) {
+        entry.image = image;
+        callNextTick(addToEntryDone, null, entry);
+      }
+    }
+
+There's a few problems here:
+- The call to `waterfall` implies that the control flow is all right there, but some of it is also out in `branch` and there's a sub-waterfall over in `addImage`.
+- `start` has to do some awkward error-checking. Normally, we let `waterfall` handle the error checking, but we don't want NotFound errors to interrupt the flow. So, task functions handle errors in two different ways.
+
+This is what this program looks like implemented with promises:
 
 The problems there are:
 
