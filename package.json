@@ -1,5 +1,5 @@
 {
-  "name": "followthrough",
+  "name": "walk-machine",
   "version": "1.0.0",
   "description": "Control callback flow through a finite state machine with functions that do just one thing each.",
   "main": "index.js",
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:jimkang/followthrough.git"
+    "url": "git@github.com:jimkang/walk-machine.git"
   },
   "keywords": [
     "callback",
@@ -18,11 +18,15 @@
   "author": "Jim Kang",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/jimkang/followthrough/issues"
+    "url": "https://github.com/jimkang/walk-machine/issues"
   },
-  "homepage": "https://github.com/jimkang/followthrough",
+  "homepage": "https://github.com/jimkang/walk-machine",
   "devDependencies": {
-    "tape": "^4.6.0"
+    "assert-no-error": "^1.0.0",
+    "call-next-tick": "^1.1.2",
+    "d3-queue": "^3.0.3",
+    "tape": "^4.6.0",
+    "eslint": "^3.4.0"
   },
   "dependencies": {}
 }

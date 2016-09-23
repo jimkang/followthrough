@@ -1,4 +1,4 @@
-followthrough
+walk-machine
 ==================
 
 Control callback flow through a finite state machine with functions that do just one thing each.
@@ -6,14 +6,14 @@ Control callback flow through a finite state machine with functions that do just
 Installation
 ------------
 
-    npm install followthrough
+    npm install walk-machine
 
 Usage
 -----
 
-    var followthrough = require('followthrough');
+    var walkMachine = require('walk-machine');
 
-    followthrough({
+    var stateMap = {
       start: {
         work: db.get,
         params: [
@@ -31,10 +31,9 @@ Usage
       },
       renderEntries: {
         work: callRender
-      },
-      // Jump here if there is an error and no 'checkError' function.
-      end: handleError
-    });
+      }
+    };
+    walkMachine(stateMap, handleError);
 
 Why
 ---
@@ -178,9 +177,9 @@ OK, there's a lot of problems there, too. TODO: Check promises code.
 
 Here's how we can do it with a state machine:
 
-    var followthrough = require('followthrough');
+    var walkMachine = require('walk-machine');
 
-    followthrough({
+    var stateMap = {
       start: {
         work: db.get,
         params: [
@@ -198,10 +197,9 @@ Here's how we can do it with a state machine:
       },
       renderEntries: {
         work: callRender
-      },
-      // Jump here if there is an error and no 'checkError' function.
-      end: handleError
-    });
+      }
+    };
+    walkMachine(stateMap, handleError);
 
     function handleError(error) {
       if (error) {
@@ -246,7 +244,7 @@ Here's how we can do it with a state machine:
 That's still a lot of code! But:
 - All of the states are explicitly listed up front.
 - Each function either does "work" or it figures out the next state. None of them do both.
-- There's fewer "prep" functions – functions that do nothing but gather together parameters to pass to another function. `callRender` does that, but at least we are able to set `db.get` up using followthrough instead of having to create a `loadEntries` function that looks like this:
+- There's fewer "prep" functions – functions that do nothing but gather together parameters to pass to another function. `callRender` does that, but at least we are able to set `db.get` up using walkMachine instead of having to create a `loadEntries` function that looks like this:
 
     function loadEntries(location, ignoreTemporaryEntries, done) {
       db.get({location: location, ignoreTemporaryEntries: ignoreTemporaryEntries}, done);
