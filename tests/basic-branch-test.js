@@ -28,7 +28,7 @@ function runBranchTest(opts) {
 
   function branchTest(t) {
     var loadProblemAsserts = 2;
-    var checkDoneAsserts = 1;
+    var checkDoneAsserts = 2;
     var pickStateAfterLoadAsserts = addImagesToLoadedProblem ? 5 : 8;
     var findImagesAsserts = addImagesToLoadedProblem ? 0 : 4;
     var callRenderAsserts = 5;
@@ -90,8 +90,9 @@ function runBranchTest(opts) {
 
     walkMachine(stateMap, checkDone);
 
-    function checkDone(error) {
+    function checkDone(error, finalValue) {
       assertNoError(t.ok, error, 'No error from walkMachine.');
+      t.equal(finalValue, 'render value', 'Final value is passed to done.');
     }
 
     function checkProblemHasImages(problem, sourceFnName) {
@@ -187,7 +188,7 @@ function runBranchTest(opts) {
     function callRender(problem, done) {
       checkProblemHasImages(problem, 'callRender');
       t.equal(typeof done, 'function', 'callRender called with done function.');
-      callNextTick(done);
+      callNextTick(done, null, 'render value');
     }
   }
 }

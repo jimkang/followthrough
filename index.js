@@ -69,7 +69,8 @@ function walkMachine(stateMap, walkMachineDone) {
         }
       }
       else {
-        walkMachineDone.apply(walkMachineDone, args);
+        // Make sure error argument at position 0 gets passed to walkMachineDone.
+        walkMachineDone.apply(walkMachineDone, arguments);
       }
 
       function followNext(error, nextStateName) {
